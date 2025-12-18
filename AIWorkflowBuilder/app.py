@@ -6,18 +6,13 @@ client = Groq(api_key=st.secrets["GROQ_API"])
 
 # ---------------- PAGE CONFIG ----------------
 st.set_page_config(page_title="AI Workflow Builder", layout="wide")
-
 st.title("🤖 AI Workflow Builder")
 
 # ---------------- SESSION STATE ----------------
-if "text" not in st.session_state:
-    st.session_state.text = ""
-if "summary" not in st.session_state:
-    st.session_state.summary = ""
-if "translation" not in st.session_state:
-    st.session_state.translation = ""
-if "key_points" not in st.session_state:
-    st.session_state.key_points = []
+st.session_state.setdefault("text", "")
+st.session_state.setdefault("summary", "")
+st.session_state.setdefault("translation", "")
+st.session_state.setdefault("key_points", [])
 
 
 # ---------------- AI FUNCTION ----------------
@@ -32,7 +27,7 @@ def groq_ai(prompt):
 
 
 # ---------------- STEP 1: FILE UPLOAD ----------------
-st.header("Step 1️⃣ Upload File")
+st.header("📂 Upload File")
 
 uploaded_file = st.file_uploader("Upload a text file (.txt)", type=["txt"])
 
@@ -40,69 +35,79 @@ if uploaded_file:
     st.session_state.text = uploaded_file.read().decode("utf-8")
     st.success("✅ File uploaded successfully")
 
+
 # ---------------- STEP 2: SUMMARIZE ----------------
-st.header("Step 2️⃣ Summarize with AI")
+if st.session_state.text:
+    st.header("🧠 Summarize with AI")
 
-if st.button("Generate Summary"):
-    with st.status("Summarizing...", expanded=False):
-        prompt = f"Summarize the following text:\n\n{st.session_state.text}"
-        st.session_state.summary = groq_ai(prompt)
-    st.success("✅ Summary generated")
+    if st.button("Generate Summary"):
+        with st.status("Summarizing...", expanded=False):
+            prompt = f"Summarize the following text:\n\n{st.session_state.text}"
+            st.session_state.summary = groq_ai(prompt)
+        st.success("✅ Summary generated")
 
-if st.session_state.summary:
-    st.subheader("📄 Summary")
-    st.write(st.session_state.summary)
+    if st.session_state.summary:
+        st.subheader("📄 Summary")
+        st.write(st.session_state.summary)
+
 
 # ---------------- STEP 3: TRANSLATE ----------------
-st.header("Step 3️⃣ Translate")
+if st.session_state.summary:
+    st.header("🌍 Translate")
 
-target_language = st.selectbox(
-    "Select language", ["Tamil", "Hindi", "French", "Spanish"]
-)
+    target_language = st.selectbox(
+        "Select language", ["Tamil", "Hindi", "French", "Spanish"]
+    )
 
-if st.button("Translate Summary"):
-    with st.status("Translating...", expanded=False):
-        prompt = f"Translate the following text to {target_language}:\n\n{st.session_state.summary}"
-        st.session_state.translation = groq_ai(prompt)
-    st.success("✅ Translation completed")
+    if st.button("Translate Summary"):
+        with st.status("Translating...", expanded=False):
+            prompt = (
+                f"Translate the following text to {target_language}:\n\n"
+                f"{st.session_state.summary}"
+            )
+            st.session_state.translation = groq_ai(prompt)
+        st.success("✅ Translation completed")
 
-if st.session_state.translation:
-    st.subheader("🌍 Translated Text")
-    st.write(st.session_state.translation)
+    if st.session_state.translation:
+        st.subheader("🌍 Translated Text")
+        st.write(st.session_state.translation)
+
 
 # ---------------- STEP 4: KEY POINTS ----------------
-st.header("Step 4️⃣ Extract Key Points")
+if st.session_state.translation:
+    st.header("🔑 Extract Key Points")
 
-if st.button("Extract Key Points"):
-    with st.status("Extracting key points...", expanded=False):
-        prompt = (
-            "Extract 5 key bullet points from the following text:\n\n"
-            f"{st.session_state.summary}"
-        )
-        points = groq_ai(prompt)
-        st.session_state.key_points = points.split("\n")
-    st.success("✅ Key points extracted")
+    if st.button("Extract Key Points"):
+        with st.status("Extracting key points...", expanded=False):
+            prompt = (
+                "Extract 5 key bullet points from the following text:\n\n"
+                f"{st.session_state.summary}"
+            )
+            points = groq_ai(prompt)
+            st.session_state.key_points = [p for p in points.split("\n") if p.strip()]
+        st.success("✅ Key points extracted")
 
-if st.session_state.key_points:
-    st.subheader("🔑 Key Points")
-    for point in st.session_state.key_points:
-        st.write("•", point)
+    if st.session_state.key_points:
+        st.subheader("🔑 Key Points")
+        for point in st.session_state.key_points:
+            st.write("•", point)
+
 
 # ---------------- FINAL OUTPUT ----------------
-st.header("📦 Final Output")
+if st.session_state.key_points:
+    st.header("📦 Final Output")
 
-final_output = {
-    "summary": st.session_state.summary,
-    "translation": st.session_state.translation,
-    "key_points": st.session_state.key_points,
-}
+    final_output = {
+        "summary": st.session_state.summary,
+        "translation": st.session_state.translation,
+        "key_points": st.session_state.key_points,
+    }
 
-st.json(final_output)
+    st.json(final_output)
 
-# ---------------- DOWNLOAD JSON ----------------
-st.download_button(
-    label="⬇️ Download JSON Report",
-    data=json.dumps(final_output, indent=4),
-    file_name="ai_workflow_output.json",
-    mime="application/json",
-)
+    st.download_button(
+        label="Download JSON Report",
+        data=json.dumps(final_output, indent=4),
+        file_name="ai_workflow_output.json",
+        mime="application/json",
+    )
